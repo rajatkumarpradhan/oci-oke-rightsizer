@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "oci-oke-rightsizer"
+version = "0.1.0"
+description = "Offline OKE request-vs-usage right-sizing on synthetic metrics"
+requires-python = ">=3.10"
+readme = "README.md"
+
+[project.scripts]
+oke-rightsizer = "oke_rightsizer.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
