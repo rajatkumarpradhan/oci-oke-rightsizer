@@ -26,10 +26,15 @@ Packing is first-fit-decreasing on requests with a 10% per-node reserve, plus pe
 ```
 python -m pip install -e .
 oke-rightsizer examples/synthetic.json --output report.json
+oke-rightsizer examples/csv-config.json --usage-csv examples/usage.csv   # per-pod CSV samples + workload config
 oke-rightsizer examples/complete.json        # all workloads have data: shows the packing estimate
 oke-rightsizer examples/synthetic.json --fail-on-high
 python -m unittest discover -s tests -v
 ```
+
+## CSV importer
+
+`--usage-csv` reads a local CSV (`timestamp,namespace,workload,pod,cpu_m,mem_mib`) and takes requests, limits and node shape from the config JSON given as the input argument (see `examples/csv-config.json`). Pods of a workload are averaged per timestamp, so a hot single pod is hidden in the mean; replicas default to the number of pods seen. Malformed rows fail with a line number; duplicate samples, negative or NaN values, and samples for workloads missing from the config are rejected. The CSV is whatever you export yourself; nothing here talks to Prometheus or OCI Monitoring.
 
 ## Limits
 
@@ -37,11 +42,11 @@ python -m unittest discover -s tests -v
 - No taints, tolerations, topology spread, DaemonSets, PodDisruptionBudgets, node pools or autoscaler behaviour in packing.
 - Limits are only used for the OOM-risk check. Vertical Pod Autoscaler recommendations are not compared.
 - A raise (RS003) can increase the estimated node count; the estimate is not always a saving.
-- No exporter from real Prometheus or OCI Monitoring data exists yet.
+- The CSV importer is a file reader; there is no exporter from real Prometheus or OCI Monitoring data, and it has only been run on synthetic CSVs.
 
 ## Tests
 
-27 unit tests cover validation, percentile maths, recommendation rules, packing with anti-affinity, each finding rule, the case where right-sizing needs more nodes, and the CLI. CI runs on Python 3.10, 3.11 and 3.12.
+41 unit tests cover validation, percentile maths, recommendation rules, packing with anti-affinity, each finding rule, the case where right-sizing needs more nodes, the CSV importer (good, malformed, sparse data) and the CLI. CI runs on Python 3.10, 3.11 and 3.12.
 
 ## License
 

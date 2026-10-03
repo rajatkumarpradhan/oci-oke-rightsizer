@@ -1,22 +1,24 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import sys
 
-from . import findings, model, packing
+from . import findings, importer, model, packing
 
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="oke-rightsizer",
                                  description="Offline OKE right-sizing review from exported metrics (synthetic/exported data).")
-    ap.add_argument("input")
+    ap.add_argument("input", help="model JSON, or workload config JSON when --usage-csv is given")
+    ap.add_argument("--usage-csv", help="CSV of per-pod samples: timestamp,namespace,workload,pod,cpu_m,mem_mib")
     ap.add_argument("--output", help="write JSON report")
     ap.add_argument("--fail-on-high", action="store_true")
     a = ap.parse_args(argv)
     try:
-        c = model.load_file(a.input)
-    except (OSError, json.JSONDecodeError, model.ModelError) as e:
+        c = importer.from_csv(a.usage_csv, a.input) if a.usage_csv else model.load_file(a.input)
+    except (OSError, json.JSONDecodeError, csv.Error, model.ModelError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
     fs, est = findings.analyze(c)

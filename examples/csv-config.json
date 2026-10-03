@@ -1,0 +1,24 @@
+{
+ "node_shape": {
+  "name": "synthetic-4cpu-16gb",
+  "cpu_m": 4000,
+  "mem_mib": 16384,
+  "cost_units": 1.0
+ },
+ "node_count": 4,
+ "workloads": [
+  {
+   "namespace": "shop",
+   "name": "web",
+   "cpu_request_m": 1000,
+   "mem_request_mib": 2048,
+   "mem_limit_mib": 4096
+  },
+  {
+   "namespace": "shop",
+   "name": "api",
+   "cpu_request_m": 500,
+   "mem_request_mib": 1024
+  }
+ ]
+}
