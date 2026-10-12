@@ -9,6 +9,7 @@ from .model import Cluster
 SEV = {"high": 0, "medium": 1, "low": 2}
 OVER_RATIO = 0.60      # recommended < 60% of current request => over-provisioned
 LIMIT_RISK = 0.95      # max usage >= 95% of limit => risk
+PEAK_RATIO = 1.10      # peak day p95 at least 10% above pooled p95 => RS009
 
 
 @dataclass
@@ -60,6 +61,12 @@ def analyze(c: Cluster):
                 out.append(Finding("RS008", "low", sub,
                                    f"Max memory {rec.mem_max_mib:.0f}MiB exceeds the {w.mem_request_mib}MiB request; the pod can be evicted first under node memory pressure.",
                                    {"current_mib": w.mem_request_mib, "max_mib": rec.mem_max_mib}))
+            if rec.peak_aware and rec.peak_day_p95_m > PEAK_RATIO * rec.pooled_p95_m:
+                out.append(Finding("RS009", "low", sub,
+                                   f"Peak day {rec.peak_day} sets the CPU suggestion: its p95 is {rec.peak_day_p95_m:.0f}m against {rec.pooled_p95_m:.0f}m pooled over all days. Suggested request {rec.cpu_request_m}m is sized from the peak day, not the quiet days.",
+                                   {"peak_day": rec.peak_day, "peak_day_p95_m": rec.peak_day_p95_m,
+                                    "pooled_p95_m": rec.pooled_p95_m, "day_p95_m": rec.day_p95_m,
+                                    "headroom": rec.headroom, "suggested_m": rec.cpu_request_m}))
             new_req[(w.namespace, w.name)] = (rec.cpu_request_m, rec.mem_request_mib)
         if w.mem_limit_mib and w.mem_usage_mib and max(w.mem_usage_mib) >= LIMIT_RISK * w.mem_limit_mib:
             if (w.namespace, w.name) in new_req:  # do not plan a shrink for a workload near its limit

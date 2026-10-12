@@ -23,3 +23,5 @@ jobs:
         run: oke-rightsizer examples/complete.json
       - name: CLI smoke (CSV importer)
         run: oke-rightsizer examples/csv-config.json --usage-csv examples/usage.csv
+      - name: CLI smoke (multi-day peak)
+        run: oke-rightsizer examples/multiday.json

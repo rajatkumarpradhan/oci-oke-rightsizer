@@ -14,7 +14,7 @@ import csv
 import json
 from collections import defaultdict
 
-from .model import Cluster, ModelError, load
+from .model import _DAY_RE, Cluster, ModelError, load
 
 REQUIRED = ["timestamp", "namespace", "workload", "pod", "cpu_m", "mem_mib"]
 
@@ -72,6 +72,9 @@ def from_csv(csv_path: str, config_path: str) -> Cluster:
             ts = sorted(s["cpu"])
             w["cpu_usage_m"] = [sum(s["cpu"][t]) / len(s["cpu"][t]) for t in ts]
             w["mem_usage_mib"] = [sum(s["mem"][t]) / len(s["mem"][t]) for t in ts]
+            days = [t[:10] for t in ts]
+            if all(_DAY_RE.match(d) for d in days) and "sample_days" not in w:
+                w["sample_days"] = days  # timestamps are ISO: keep the day of each sample
             w.setdefault("replicas", len(s["pods"]))
         else:
             w.setdefault("cpu_usage_m", [])

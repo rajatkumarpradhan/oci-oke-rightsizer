@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 
 
@@ -21,6 +22,9 @@ class Workload:
     cpu_usage_m: list[float]
     mem_usage_mib: list[float]
     anti_affinity: bool = False
+    sample_days: list[str] | None = None   # 'YYYY-MM-DD' per sample, parallel to cpu_usage_m
+    headroom_class: str = "steady"
+    cpu_headroom: float | None = None       # explicit override of the class headroom
 
 
 @dataclass
@@ -53,6 +57,30 @@ def _samples(v, what):
     return [float(x) for x in v]
 
 
+HEADROOM_CLASSES = {"steady": 1.20, "bursty": 1.40, "critical": 1.50}
+_DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _days(v, n, key):
+    if v is None:
+        return None
+    if not isinstance(v, list) or any(not isinstance(x, str) or not _DAY_RE.match(x) for x in v):
+        raise ModelError(f"{key}: sample_days must be a list of YYYY-MM-DD strings")
+    if len(v) != n:
+        raise ModelError(f"{key}: sample_days has {len(v)} entries but cpu_usage_m has {n}")
+    return list(v)
+
+
+def _headroom(w, key):
+    cls = w.get("headroom_class", "steady")
+    if cls not in HEADROOM_CLASSES:
+        raise ModelError(f"{key}: headroom_class must be one of {', '.join(sorted(HEADROOM_CLASSES))}")
+    h = w.get("cpu_headroom")
+    if h is not None and (isinstance(h, bool) or not isinstance(h, (int, float)) or not 1.0 <= h <= 3.0):
+        raise ModelError(f"{key}: cpu_headroom must be a number in [1.0, 3.0]")
+    return cls, (float(h) if h is not None else None)
+
+
 def load(data: dict) -> Cluster:
     try:
         s = data["node_shape"]
@@ -82,6 +110,8 @@ def load(data: dict) -> Cluster:
                           _samples(w.get("cpu_usage_m", []), "cpu_usage_m"),
                           _samples(w.get("mem_usage_mib", []), "mem_usage_mib"),
                           bool(w.get("anti_affinity", False)))
+            wl.sample_days = _days(w.get("sample_days"), len(wl.cpu_usage_m), key)
+            wl.headroom_class, wl.cpu_headroom = _headroom(w, key)
             wls.append(wl)
     except (KeyError, TypeError) as e:
         raise ModelError(f"invalid model: {e!r}") from e
